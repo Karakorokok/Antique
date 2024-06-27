@@ -10,5 +10,6 @@ $routes->setAutoRoute(false);
 
 /** user */
 $routes->match(['get', 'post'], '/barbaza-menro/home', 'UserController::userHome');
+$routes->match(['get', 'post'], '/barbaza-menro/history', 'UserController::userHistory');
 $routes->match(['get', 'post'], '/barbaza-menro/login', 'UserController::userLogin');
 $routes->match(['get', 'post'], '/barbaza-menro/signup', 'UserController::userSignup');

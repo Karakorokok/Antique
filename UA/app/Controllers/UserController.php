@@ -12,6 +12,11 @@ class UserController extends BaseController {
         return view('user/userhome.php');
     }
 
+    public function userHistory() {
+
+        return view('user/userhistory.php');
+    }
+
     public function userLogin() {
 
         return view('user/userlogin.php');

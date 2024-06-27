@@ -19,3 +19,11 @@ body {
     background-color: rgb(126,217,87) !important;
     color: rgb(255,255,255) !important;
 }
+
+.bg-custom-dark {
+    background-color: rgb(33,37,41) !important;
+}
+
+.bg-custom-yellow {
+    background-color: rgb(253,245,220) !important;
+}
