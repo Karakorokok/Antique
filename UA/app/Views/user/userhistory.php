@@ -20,29 +20,26 @@
                 </div>
 
                 <!-- table -->
-                 <div></div>
-                <div class="container table-responsive m-3">
-                    <table class="table table-striped" id="homePageTable">
-                        <thead>
-                            <tr>
-                                <th scope="col">#</th>
-                                <th scope="col">First</th>
-                                <th scope="col">Last</th>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <th scope="row">1</th>
-                                <td>Mark</td>
-                                <td>Otto</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">2</th>
-                                <td>Jacob</td>
-                                <td>Thornton</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="list-wrapper row mt-5">
+                    <?php for($i = 0;$i < 10; $i++) { ?>
+                        <div class="col-md-3 col-6 list-item mb-3">
+                            <div class="card h-100">
+                                <img src="https://i3.wp.com/assets.tiltify.com/uploads/media_type/image/203025/blob-09636982-a21a-494b-bbe4-3692c2720ae3.jpeg" class="card-img-top object-fit-scale w-100 mt-2" height="100">
+                                <div class="card-body">
+                                    <h6 class="card-title"></h6>
+                                    <h6 class="card-title"></h6>
+                                    <a href="" class="btn btn-outline-danger w-100 mb-2">jollibee</a>
+                                    <a href="" class="btn btn-info w-100">amen</a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php } ?>
                 </div>
+
+                <div class="float-end">
+                    <div id="pagination-container" class=""></div>
+                </div>
+               
                 <!-- end table -->
             </div>
         </div> 
@@ -55,11 +52,22 @@
 <?= $this->section('javascripts') ?>
 
     <script>
-        $(document).ready(function(){
+        var items = $(".list-wrapper .list-item");
+        var numItems = items.length;
+        var perPage = 8;
 
-            	
-            new DataTable('#homePageTable');
+        items.slice(perPage).hide();
 
+        $('#pagination-container').pagination({
+            items: numItems,
+            itemsOnPage: perPage,
+            prevText: "&laquo;",
+            nextText: "&raquo;",
+            onPageClick: function (pageNumber) {
+                var showFrom = perPage * (pageNumber - 1);
+                var showTo = showFrom + perPage;
+                items.hide().slice(showFrom, showTo).show();
+            }
         });
     </script>
 

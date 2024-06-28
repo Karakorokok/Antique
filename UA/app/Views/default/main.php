@@ -13,8 +13,9 @@
     <!-- fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- datatable -->
-    <!-- <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css"> -->
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
+    <!-- pagination -->
+    <link type="text/css" rel="stylesheet" href="/css/simplePagination.css"/>
    
     <?= $this->renderSection('css') ?>
 
@@ -33,6 +34,8 @@
     <!-- datatable -->
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
+    <!-- pagination -->
+    <script type="text/javascript" src="/js/jquery.simplePagination.js"></script>
    
   
     <?= $this->renderSection('javascripts') ?>
