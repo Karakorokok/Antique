@@ -1,0 +1,71 @@
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100%;
+    background-color: rgb(10, 145, 223);
+    overflow-y: scroll;
+    transition: left 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+
+#sidebar a {
+    text-decoration: none;
+    color: rgb(255,255,255);
+    display: block;
+    margin-bottom: 10px;
+    transition: padding 0.3s;
+}
+
+#sidebar a:hover {
+    padding-left: 25px;
+    background-color: rgba(255,255,255,.40);
+    border-radius: 5px;
+}
+
+#main {
+    margin-left: 280px;
+    transition: margin-left 0.3s;
+}
+
+#sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background-color: rgb(10, 145, 223);
+    border-radius: 5px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+    background-color: rgba(0,0,0,0);
+}
+
+#sidebar-toggle-btn {
+    color: rgb(10, 145, 223);
+    cursor: pointer;
+}
+
+#sidebar-footer {
+    margin-top: auto;
+}
+
+.sidebar-selected {
+    background-color: rgba(255,255,255,.4) !important;
+    border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+      left: -280px;
+    }
+    #main {
+      margin-left: 0;
+    }
+}
+
+.profile-fontsize {
+    font-size: 20px !important;
+}

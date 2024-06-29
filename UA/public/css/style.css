@@ -1,0 +1,75 @@
+body {
+    background-color: rgb(225,225,229) !important;
+    font-family: 'Roboto', sans-serif !important;
+}
+
+.text-jaqmed {
+    color: rgb(210,20,60) !important;
+}
+
+.text-jaqmed-light {
+    color: rgb(240,50,90) !important;
+}
+
+
+.bg-jaqmed {
+    background-color: rgb(210,20,60) !important;
+}
+
+.bg-jaqmed-light {
+    background-color: rgb(240,50,90) !important;
+}
+
+.center {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.center-vertical {
+    display: block !important;
+    margin-top: auto !important;
+    margin-bottom: auto !important;
+}
+
+@media only screen and (max-width: 1280px) {
+    #jaqMedTitle {
+      display: none;
+    }
+}
+.user-sidebar {
+    padding: 5px !important;
+}
+.user-sidebar-selected {
+    background-color: rgba(240,50,90,.5) !important;
+    padding: 5px !important;
+    border-radius: 5px !important;
+    color: rgb(255,255,255) !important;
+}
+
+input[type=number]:not(.input-number-exclude)::-webkit-inner-spin-button, 
+input[type=number]:not(.input-number-exclude)::-webkit-outer-spin-button {  
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+@media only screen and (max-width: 500px) {
+    .cart-image {
+        width: 100% !important;
+        height: auto !important;
+    }
+}
+
+.admin-home-background {
+    background-color: rgba(210,210,255,.25);
+}
+
+.bg-green {
+    background-color: rgb(113,221,55) !important;
+    color: rgb(255,255,255) !important;
+}
+
+
+

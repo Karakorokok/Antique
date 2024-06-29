@@ -1,0 +1,29 @@
+
+body {
+    font-family: 'Roboto', sans-serif !important;
+    background-color: rgb(225,225,229) !important;
+}
+
+.center {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.bg-green {
+    background-color: rgb(113,221,55) !important;
+    color: rgb(255,255,255) !important;
+}
+
+.bg-green-navbar {
+    background-color: rgb(126,217,87) !important;
+    color: rgb(255,255,255) !important;
+}
+
+.bg-custom-dark {
+    background-color: rgb(33,37,41) !important;
+}
+
+.bg-custom-yellow {
+    background-color: rgb(253,245,220) !important;
+}
