@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -32,7 +30,7 @@ interface MessageInterface
     /**
      * Sets the body of the current message.
      *
-     * @param string $data
+     * @param mixed $data
      *
      * @return $this
      */
@@ -50,7 +48,7 @@ interface MessageInterface
     /**
      * Appends data to the body of the current message.
      *
-     * @param string $data
+     * @param mixed $data
      *
      * @return $this
      */
@@ -64,7 +62,7 @@ interface MessageInterface
     /**
      * Returns an array containing all Headers.
      *
-     * @return array<string, Header|list<Header>> An array of the Header objects
+     * @return array<string, Header> An array of the Header objects
      */
     public function headers(): array;
 
@@ -85,7 +83,7 @@ interface MessageInterface
      *
      * @param string $name
      *
-     * @return Header|list<Header>|null
+     * @return array|Header|null
      */
     public function header($name);
 

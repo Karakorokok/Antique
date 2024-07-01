@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -34,6 +32,8 @@ class ImageMagickHandler extends BaseHandler
     protected $resource;
 
     /**
+     * Constructor.
+     *
      * @param Images $config
      *
      * @throws ImageException
@@ -44,22 +44,6 @@ class ImageMagickHandler extends BaseHandler
 
         if (! (extension_loaded('imagick') || class_exists(Imagick::class))) {
             throw ImageException::forMissingExtension('IMAGICK'); // @codeCoverageIgnore
-        }
-
-        $cmd = $this->config->libraryPath;
-
-        if ($cmd === '') {
-            throw ImageException::forInvalidImageLibraryPath($cmd);
-        }
-
-        if (preg_match('/convert$/i', $cmd) !== 1) {
-            $cmd = rtrim($cmd, '\/') . '/convert';
-
-            $this->config->libraryPath = $cmd;
-        }
-
-        if (! is_file($cmd)) {
-            throw ImageException::forInvalidImageLibraryPath($cmd);
         }
     }
 
@@ -93,7 +77,7 @@ class ImageMagickHandler extends BaseHandler
     /**
      * Crops the image.
      *
-     * @return bool|ImageMagickHandler
+     * @return bool|\CodeIgniter\Images\Handlers\ImageMagickHandler
      *
      * @throws Exception
      */
@@ -183,10 +167,12 @@ class ImageMagickHandler extends BaseHandler
      */
     public function getVersion(): string
     {
-        $versionString = $this->process('-version')[0];
-        preg_match('/ImageMagick\s(?P<version>[\S]+)/', $versionString, $matches);
+        $result = $this->process('-version');
 
-        return $matches['version'];
+        // The first line has the version in it...
+        preg_match('/(ImageMagick\s[\S]+)/', $result[0], $matches);
+
+        return str_replace('ImageMagick ', '', $matches[0]);
     }
 
     /**
@@ -198,8 +184,17 @@ class ImageMagickHandler extends BaseHandler
      */
     protected function process(string $action, int $quality = 100): array
     {
+        // Do we have a vaild library path?
+        if (empty($this->config->libraryPath)) {
+            throw ImageException::forInvalidImageLibraryPath($this->config->libraryPath);
+        }
+
         if ($action !== '-version') {
             $this->supportedFormatCheck();
+        }
+
+        if (! preg_match('/convert$/i', $this->config->libraryPath)) {
+            $this->config->libraryPath = rtrim($this->config->libraryPath, '/') . '/convert';
         }
 
         $cmd = $this->config->libraryPath;
@@ -228,13 +223,11 @@ class ImageMagickHandler extends BaseHandler
      * Example:
      *    $image->resize(100, 200, true)
      *          ->save();
-     *
-     * @param non-empty-string|null $target
      */
     public function save(?string $target = null, int $quality = 90): bool
     {
         $original = $target;
-        $target   = ($target === null || $target === '') ? $this->image()->getPathname() : $target;
+        $target   = empty($target) ? $this->image()->getPathname() : $target;
 
         // If no new resource has been created, then we're
         // simply copy the existing one.
@@ -297,8 +290,6 @@ class ImageMagickHandler extends BaseHandler
     /**
      * Make the image resource object if needed
      *
-     * @return void
-     *
      * @throws Exception
      */
     protected function ensureResource()
@@ -310,8 +301,6 @@ class ImageMagickHandler extends BaseHandler
 
     /**
      * Check if given image format is supported
-     *
-     * @return void
      *
      * @throws ImageException
      */
@@ -329,8 +318,6 @@ class ImageMagickHandler extends BaseHandler
     /**
      * Handler-specific method for overlaying text on an image.
      *
-     * @return void
-     *
      * @throws Exception
      */
     protected function _text(string $text, array $options = [])
@@ -347,11 +334,11 @@ class ImageMagickHandler extends BaseHandler
         // invert the offset. Note: The horizontal
         // offset flips itself automatically
         if ($options['vAlign'] === 'bottom') {
-            $options['vOffset'] *= -1;
+            $options['vOffset'] = $options['vOffset'] * -1;
         }
 
         if ($options['hAlign'] === 'right') {
-            $options['hOffset'] *= -1;
+            $options['hOffset'] = $options['hOffset'] * -1;
         }
 
         // Font
@@ -455,15 +442,30 @@ class ImageMagickHandler extends BaseHandler
     {
         $orientation = $this->getEXIF('Orientation', $silent);
 
-        return match ($orientation) {
-            2       => $this->flip('horizontal'),
-            3       => $this->rotate(180),
-            4       => $this->rotate(180)->flip('horizontal'),
-            5       => $this->rotate(90)->flip('horizontal'),
-            6       => $this->rotate(90),
-            7       => $this->rotate(270)->flip('horizontal'),
-            8       => $this->rotate(270),
-            default => $this,
-        };
+        switch ($orientation) {
+            case 2:
+                return $this->flip('horizontal');
+
+            case 3:
+                return $this->rotate(180);
+
+            case 4:
+                return $this->rotate(180)->flip('horizontal');
+
+            case 5:
+                return $this->rotate(90)->flip('horizontal');
+
+            case 6:
+                return $this->rotate(90);
+
+            case 7:
+                return $this->rotate(270)->flip('horizontal');
+
+            case 8:
+                return $this->rotate(270);
+
+            default:
+                return $this;
+        }
     }
 }

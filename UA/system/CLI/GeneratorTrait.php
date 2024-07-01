@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -13,7 +11,7 @@ declare(strict_types=1);
 
 namespace CodeIgniter\CLI;
 
-use Config\Generators;
+use Config\Services;
 use Throwable;
 
 /**
@@ -37,15 +35,7 @@ trait GeneratorTrait
     protected $directory;
 
     /**
-     * (Optional) View template path
-     *
-     * We use special namespaced paths like:
-     *      `CodeIgniter\Commands\Generators\Views\cell.tpl.php`.
-     */
-    protected ?string $templatePath = null;
-
-    /**
-     * View template name for fallback
+     * View template name
      *
      * @var string
      */
@@ -57,12 +47,6 @@ trait GeneratorTrait
      * @var string
      */
     protected $classNameLang = '';
-
-    /**
-     * Namespace to use for class.
-     * Leave null to use the default namespace.
-     */
-    protected ?string $namespace = null;
 
     /**
      * Whether to require class name.
@@ -113,7 +97,7 @@ trait GeneratorTrait
     /**
      * Generates a class file from an existing template.
      */
-    protected function generateClass(array $params): void
+    protected function generateClass(array $params)
     {
         $this->params = $params;
 
@@ -124,7 +108,7 @@ trait GeneratorTrait
         $target = $this->buildPath($class);
 
         // Check if path is empty.
-        if ($target === '') {
+        if (empty($target)) {
             return;
         }
 
@@ -133,17 +117,15 @@ trait GeneratorTrait
 
     /**
      * Generate a view file from an existing template.
-     *
-     * @param string $view namespaced view name that is generated
      */
-    protected function generateView(string $view, array $params): void
+    protected function generateView(string $view, array $params)
     {
         $this->params = $params;
 
         $target = $this->buildPath($view);
 
         // Check if path is empty.
-        if ($target === '') {
+        if (empty($target)) {
             return;
         }
 
@@ -152,8 +134,6 @@ trait GeneratorTrait
 
     /**
      * Handles writing the file to disk, and all of the safety checks around that.
-     *
-     * @param string $target file path
      */
     private function generateFile(string $target, string $content): void
     {
@@ -162,13 +142,7 @@ trait GeneratorTrait
             CLI::write(lang('CLI.generator.usingCINamespace'), 'yellow');
             CLI::newLine();
 
-            if (
-                CLI::prompt(
-                    'Are you sure you want to continue?',
-                    ['y', 'n'],
-                    'required'
-                ) === 'n'
-            ) {
+            if (CLI::prompt('Are you sure you want to continue?', ['y', 'n'], 'required') === 'n') {
                 CLI::newLine();
                 CLI::write(lang('CLI.generator.cancelOperation'), 'yellow');
                 CLI::newLine();
@@ -185,11 +159,7 @@ trait GeneratorTrait
         // Overwriting files unknowingly is a serious annoyance, So we'll check if
         // we are duplicating things, If 'force' option is not supplied, we bail.
         if (! $this->getOption('force') && $isFile) {
-            CLI::error(
-                lang('CLI.generator.fileExist', [clean_path($target)]),
-                'light_gray',
-                'red'
-            );
+            CLI::error(lang('CLI.generator.fileExist', [clean_path($target)]), 'light_gray', 'red');
             CLI::newLine();
 
             return;
@@ -208,11 +178,7 @@ trait GeneratorTrait
         // contents from the template, and then we'll do the necessary replacements.
         if (! write_file($target, $content)) {
             // @codeCoverageIgnoreStart
-            CLI::error(
-                lang('CLI.generator.fileError', [clean_path($target)]),
-                'light_gray',
-                'red'
-            );
+            CLI::error(lang('CLI.generator.fileError', [clean_path($target)]), 'light_gray', 'red');
             CLI::newLine();
 
             return;
@@ -220,28 +186,18 @@ trait GeneratorTrait
         }
 
         if ($this->getOption('force') && $isFile) {
-            CLI::write(
-                lang('CLI.generator.fileOverwrite', [clean_path($target)]),
-                'yellow'
-            );
+            CLI::write(lang('CLI.generator.fileOverwrite', [clean_path($target)]), 'yellow');
             CLI::newLine();
 
             return;
         }
 
-        CLI::write(
-            lang('CLI.generator.fileCreate', [clean_path($target)]),
-            'green'
-        );
+        CLI::write(lang('CLI.generator.fileCreate', [clean_path($target)]), 'green');
         CLI::newLine();
     }
 
     /**
      * Prepare options and do the necessary replacements.
-     *
-     * @param string $class namespaced classname or namespaced view.
-     *
-     * @return string generated file content
      */
     protected function prepare(string $class): string
     {
@@ -263,34 +219,13 @@ trait GeneratorTrait
      */
     protected function qualifyClassName(): string
     {
-        $class = $this->normalizeInputClassName();
-
-        // Gets the namespace from input. Don't forget the ending backslash!
-        $namespace = $this->getNamespace() . '\\';
-
-        if (str_starts_with($class, $namespace)) {
-            return $class; // @codeCoverageIgnore
-        }
-
-        $directoryString = ($this->directory !== null) ? $this->directory . '\\' : '';
-
-        return $namespace . $directoryString . str_replace('/', '\\', $class);
-    }
-
-    /**
-     * Normalize input classname.
-     */
-    private function normalizeInputClassName(): string
-    {
         // Gets the class name from input.
         $class = $this->params[0] ?? CLI::getSegment(2);
 
         if ($class === null && $this->hasClassName) {
             // @codeCoverageIgnoreStart
-            $nameLang = $this->classNameLang !== ''
-                ? $this->classNameLang
-                : 'CLI.generator.className.default';
-            $class = CLI::prompt(lang($nameLang), null, 'required');
+            $nameLang = $this->classNameLang ?: 'CLI.generator.className.default';
+            $class    = CLI::prompt(lang($nameLang), null, 'required');
             CLI::newLine();
             // @codeCoverageIgnoreEnd
         }
@@ -308,24 +243,21 @@ trait GeneratorTrait
             $class = $matches[1] . ucfirst($matches[2]);
         }
 
-        if (
-            $this->enabledSuffixing && $this->getOption('suffix')
-            && preg_match($pattern, $class) !== 1
-        ) {
+        if ($this->enabledSuffixing && $this->getOption('suffix') && preg_match($pattern, $class) !== 1) {
             $class .= ucfirst($component);
         }
 
         // Trims input, normalize separators, and ensure that all paths are in Pascalcase.
-        return ltrim(
-            implode(
-                '\\',
-                array_map(
-                    'pascalize',
-                    explode('\\', str_replace('/', '\\', trim($class)))
-                )
-            ),
-            '\\/'
-        );
+        $class = ltrim(implode('\\', array_map('pascalize', explode('\\', str_replace('/', '\\', trim($class))))), '\\/');
+
+        // Gets the namespace from input. Don't forget the ending backslash!
+        $namespace = trim(str_replace('/', '\\', $this->getOption('namespace') ?? APP_NAMESPACE), '\\') . '\\';
+
+        if (strncmp($class, $namespace, strlen($namespace)) === 0) {
+            return $class; // @codeCoverageIgnore
+        }
+
+        return $namespace . $this->directory . '\\' . str_replace('/', '\\', $class);
     }
 
     /**
@@ -335,41 +267,21 @@ trait GeneratorTrait
     protected function renderTemplate(array $data = []): string
     {
         try {
-            $template = $this->templatePath ?? config(Generators::class)->views[$this->name];
-
-            return view($template, $data, ['debug' => false]);
+            return view(config('Generators')->views[$this->name], $data, ['debug' => false]);
         } catch (Throwable $e) {
             log_message('error', (string) $e);
 
-            return view(
-                "CodeIgniter\\Commands\\Generators\\Views\\{$this->template}",
-                $data,
-                ['debug' => false]
-            );
+            return view("CodeIgniter\\Commands\\Generators\\Views\\{$this->template}", $data, ['debug' => false]);
         }
     }
 
     /**
      * Performs pseudo-variables contained within view file.
-     *
-     * @param string $class namespaced classname or namespaced view.
-     *
-     * @return string generated file content
      */
-    protected function parseTemplate(
-        string $class,
-        array $search = [],
-        array $replace = [],
-        array $data = []
-    ): string {
+    protected function parseTemplate(string $class, array $search = [], array $replace = [], array $data = []): string
+    {
         // Retrieves the namespace part from the fully qualified class name.
-        $namespace = trim(
-            implode(
-                '\\',
-                array_slice(explode('\\', $class), 0, -1)
-            ),
-            '\\'
-        );
+        $namespace = trim(implode('\\', array_slice(explode('\\', $class), 0, -1)), '\\');
         $search[]  = '<@php';
         $search[]  = '{namespace}';
         $search[]  = '{class}';
@@ -389,14 +301,7 @@ trait GeneratorTrait
     {
         $template = $this->prepare($class);
 
-        if (
-            $this->sortImports
-            && preg_match(
-                '/(?P<imports>(?:^use [^;]+;$\n?)+)/m',
-                $template,
-                $match
-            )
-        ) {
+        if ($this->sortImports && preg_match('/(?P<imports>(?:^use [^;]+;$\n?)+)/m', $template, $match)) {
             $imports = explode("\n", trim($match['imports']));
             sort($imports);
 
@@ -408,62 +313,25 @@ trait GeneratorTrait
 
     /**
      * Builds the file path from the class name.
-     *
-     * @param string $class namespaced classname or namespaced view.
      */
     protected function buildPath(string $class): string
     {
-        $namespace = $this->getNamespace();
+        $namespace = trim(str_replace('/', '\\', $this->getOption('namespace') ?? APP_NAMESPACE), '\\');
 
         // Check if the namespace is actually defined and we are not just typing gibberish.
-        $base = service('autoloader')->getNamespace($namespace);
+        $base = Services::autoloader()->getNamespace($namespace);
 
         if (! $base = reset($base)) {
-            CLI::error(
-                lang('CLI.namespaceNotDefined', [$namespace]),
-                'light_gray',
-                'red'
-            );
+            CLI::error(lang('CLI.namespaceNotDefined', [$namespace]), 'light_gray', 'red');
             CLI::newLine();
 
             return '';
         }
 
-        $realpath = realpath($base);
-        $base     = ($realpath !== false) ? $realpath : $base;
+        $base = realpath($base) ?: $base;
+        $file = $base . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, trim(str_replace($namespace . '\\', '', $class), '\\')) . '.php';
 
-        $file = $base . DIRECTORY_SEPARATOR
-            . str_replace(
-                '\\',
-                DIRECTORY_SEPARATOR,
-                trim(str_replace($namespace . '\\', '', $class), '\\')
-            ) . '.php';
-
-        return implode(
-            DIRECTORY_SEPARATOR,
-            array_slice(
-                explode(DIRECTORY_SEPARATOR, $file),
-                0,
-                -1
-            )
-        ) . DIRECTORY_SEPARATOR . $this->basename($file);
-    }
-
-    /**
-     * Gets the namespace from the command-line option,
-     * or the default namespace if the option is not set.
-     * Can be overridden by directly setting $this->namespace.
-     */
-    protected function getNamespace(): string
-    {
-        return $this->namespace ?? trim(
-            str_replace(
-                '/',
-                '\\',
-                $this->getOption('namespace') ?? APP_NAMESPACE
-            ),
-            '\\'
-        );
+        return implode(DIRECTORY_SEPARATOR, array_slice(explode(DIRECTORY_SEPARATOR, $file), 0, -1)) . DIRECTORY_SEPARATOR . $this->basename($file);
     }
 
     /**
@@ -505,8 +373,10 @@ trait GeneratorTrait
     /**
      * Gets a single command-line option. Returns TRUE if the option exists,
      * but doesn't have a value, and is simply acting as a flag.
+     *
+     * @return mixed
      */
-    protected function getOption(string $name): string|bool|null
+    protected function getOption(string $name)
     {
         if (! array_key_exists($name, $this->params)) {
             return CLI::getOption($name);

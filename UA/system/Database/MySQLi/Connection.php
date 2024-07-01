@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -75,13 +73,6 @@ class Connection extends BaseConnection
     public $resultMode = MYSQLI_STORE_RESULT;
 
     /**
-     * Use MYSQLI_OPT_INT_AND_FLOAT_NATIVE
-     *
-     * @var bool
-     */
-    public $numberNative = false;
-
-    /**
      * Connect to the database.
      *
      * @return false|mysqli
@@ -107,10 +98,6 @@ class Connection extends BaseConnection
         mysqli_report(MYSQLI_REPORT_ALL & ~MYSQLI_REPORT_INDEX);
 
         $this->mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
-
-        if ($this->numberNative === true) {
-            $this->mysqli->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
-        }
 
         if (isset($this->strictOn)) {
             if ($this->strictOn) {
@@ -152,7 +139,7 @@ class Connection extends BaseConnection
                 $ssl['cipher'] = $this->encrypt['ssl_cipher'];
             }
 
-            if ($ssl !== []) {
+            if (! empty($ssl)) {
                 if (isset($this->encrypt['ssl_verify'])) {
                     if ($this->encrypt['ssl_verify']) {
                         if (defined('MYSQLI_OPT_SSL_VERIFY_SERVER_CERT')) {
@@ -357,9 +344,9 @@ class Connection extends BaseConnection
      * additional "ESCAPE x" parameter for specifying the escape character
      * in "LIKE" strings, and this handles those directly with a backslash.
      *
-     * @param list<string>|string $str Input string
+     * @param string|string[] $str Input string
      *
-     * @return list<string>|string
+     * @return string|string[]
      */
     public function escapeLikeStringDirect($str)
     {
@@ -389,7 +376,7 @@ class Connection extends BaseConnection
      */
     protected function _listTables(bool $prefixLimit = false, ?string $tableName = null): string
     {
-        $sql = 'SHOW TABLES FROM ' . $this->escapeIdentifier($this->database);
+        $sql = 'SHOW TABLES FROM ' . $this->escapeIdentifiers($this->database);
 
         if ($tableName !== null) {
             return $sql . ' LIKE ' . $this->escape($tableName);
@@ -413,7 +400,7 @@ class Connection extends BaseConnection
     /**
      * Returns an array of objects with field data
      *
-     * @return list<stdClass>
+     * @return stdClass[]
      *
      * @throws DatabaseException
      */
@@ -445,7 +432,7 @@ class Connection extends BaseConnection
     /**
      * Returns an array of objects with index data
      *
-     * @return array<string, stdClass>
+     * @return stdClass[]
      *
      * @throws DatabaseException
      * @throws LogicException
@@ -491,7 +478,7 @@ class Connection extends BaseConnection
     /**
      * Returns an array of objects with Foreign key data
      *
-     * @return array<string, stdClass>
+     * @return stdClass[]
      *
      * @throws DatabaseException
      */

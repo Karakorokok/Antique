@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -21,7 +19,7 @@ interface FormatterInterface
     /**
      * Takes the given data and formats it.
      *
-     * @param array|object|string $data
+     * @param array|string $data
      *
      * @return false|string
      */

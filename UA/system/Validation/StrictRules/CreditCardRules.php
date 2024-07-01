@@ -21,11 +21,10 @@ use CodeIgniter\Validation\CreditCardRules as NonStrictCreditCardRules;
  * Provides validation methods for common credit-card inputs.
  *
  * @see http://en.wikipedia.org/wiki/Credit_card_number
- * @see \CodeIgniter\Validation\StrictRules\CreditCardRulesTest
  */
 class CreditCardRules
 {
-    private readonly NonStrictCreditCardRules $nonStrictCreditCardRules;
+    private NonStrictCreditCardRules $nonStrictCreditCardRules;
 
     public function __construct()
     {

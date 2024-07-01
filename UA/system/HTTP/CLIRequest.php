@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -27,8 +25,6 @@ use RuntimeException;
  * originally made available under.
  *
  * http://fuelphp.com
- *
- * @see \CodeIgniter\HTTP\CLIRequestTest
  */
 class CLIRequest extends Request
 {
@@ -58,7 +54,7 @@ class CLIRequest extends Request
      *
      * @var string
      */
-    protected $method = 'CLI';
+    protected $method = 'cli';
 
     /**
      * Constructor
@@ -75,9 +71,6 @@ class CLIRequest extends Request
         ignore_user_abort(true);
 
         $this->parseCommand();
-
-        // Set SiteURI for this request
-        $this->uri = new SiteURI($config, $this->getPath());
     }
 
     /**
@@ -97,7 +90,7 @@ class CLIRequest extends Request
     {
         $path = implode('/', $this->segments);
 
-        return ($path === '') ? '' : $path;
+        return empty($path) ? '' : $path;
     }
 
     /**
@@ -149,7 +142,7 @@ class CLIRequest extends Request
      */
     public function getOptionString(bool $useLongOpts = false): string
     {
-        if ($this->options === []) {
+        if (empty($this->options)) {
             return '';
         }
 
@@ -182,8 +175,6 @@ class CLIRequest extends Request
      *
      * NOTE: I tried to use getopt but had it fail occasionally to find
      * any options, where argv has always had our back.
-     *
-     * @return void
      */
     protected function parseCommand()
     {
@@ -230,7 +221,7 @@ class CLIRequest extends Request
      *
      * @param array|string|null $index  Index for item to fetch from $_GET.
      * @param int|null          $filter A filter name to apply.
-     * @param array|int|null    $flags
+     * @param mixed|null        $flags
      *
      * @return array|null
      */
@@ -244,7 +235,7 @@ class CLIRequest extends Request
      *
      * @param array|string|null $index  Index for item to fetch from $_POST.
      * @param int|null          $filter A filter name to apply
-     * @param array|int|null    $flags
+     * @param mixed             $flags
      *
      * @return array|null
      */
@@ -258,7 +249,7 @@ class CLIRequest extends Request
      *
      * @param array|string|null $index  Index for item to fetch from $_POST or $_GET
      * @param int|null          $filter A filter name to apply
-     * @param array|int|null    $flags
+     * @param mixed             $flags
      *
      * @return array|null
      */
@@ -272,7 +263,7 @@ class CLIRequest extends Request
      *
      * @param array|string|null $index  Index for item to be fetched from $_GET or $_POST
      * @param int|null          $filter A filter name to apply
-     * @param array|int|null    $flags
+     * @param mixed             $flags
      *
      * @return array|null
      */
@@ -317,7 +308,7 @@ class CLIRequest extends Request
     /**
      * Checks this request type.
      *
-     * @param         string                                                                    $type HTTP verb or 'json' or 'ajax'
+     * @param string $type HTTP verb or 'json' or 'ajax'
      * @phpstan-param string|'get'|'post'|'put'|'delete'|'head'|'patch'|'options'|'json'|'ajax' $type
      */
     public function is(string $type): bool

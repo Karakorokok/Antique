@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -13,12 +11,8 @@ declare(strict_types=1);
 
 namespace CodeIgniter\Typography;
 
-use Config\DocTypes;
-
 /**
  * Typography Class
- *
- * @see \CodeIgniter\Typography\TypographyTest
  */
 class Typography
 {
@@ -84,7 +78,7 @@ class Typography
         }
 
         // Standardize Newlines to make matching easier
-        if (str_contains($str, "\r")) {
+        if (strpos($str, "\r") !== false) {
             $str = str_replace(["\r\n", "\r"], "\n", $str);
         }
 
@@ -96,7 +90,7 @@ class Typography
 
         // HTML comment tags don't conform to patterns of normal tags, so pull them out separately, only if needed
         $htmlComments = [];
-        if (str_contains($str, '<!--') && preg_match_all('#(<!\-\-.*?\-\->)#s', $str, $matches)) {
+        if (strpos($str, '<!--') !== false && preg_match_all('#(<!\-\-.*?\-\->)#s', $str, $matches)) {
             for ($i = 0, $total = count($matches[0]); $i < $total; $i++) {
                 $htmlComments[] = $matches[0][$i];
                 $str            = str_replace($matches[0][$i], '{@HC' . $i . '}', $str);
@@ -105,16 +99,16 @@ class Typography
 
         // match and yank <pre> tags if they exist.  It's cheaper to do this separately since most content will
         // not contain <pre> tags, and it keeps the PCRE patterns below simpler and faster
-        if (str_contains($str, '<pre')) {
-            $str = preg_replace_callback('#<pre.*?>.*?</pre>#si', $this->protectCharacters(...), $str);
+        if (strpos($str, '<pre') !== false) {
+            $str = preg_replace_callback('#<pre.*?>.*?</pre>#si', [$this, 'protectCharacters'], $str);
         }
 
         // Convert quotes within tags to temporary markers.
-        $str = preg_replace_callback('#<.+?>#si', $this->protectCharacters(...), $str);
+        $str = preg_replace_callback('#<.+?>#si', [$this, 'protectCharacters'], $str);
 
         // Do the same with braces if necessary
         if ($this->protectBracedQuotes === false) {
-            $str = preg_replace_callback('#\{.+?\}#si', $this->protectCharacters(...), $str);
+            $str = preg_replace_callback('#\{.+?\}#si', [$this, 'protectCharacters'], $str);
         }
 
         // Convert "ignore" tags to temporary marker.  The parser splits out the string at every tag
@@ -285,7 +279,7 @@ class Typography
      */
     protected function formatNewLines(string $str): string
     {
-        if ($str === '' || (! str_contains($str, "\n") && ! in_array($this->lastBlockElement, $this->innerBlockRequired, true))) {
+        if ($str === '' || (strpos($str, "\n") === false && ! in_array($this->lastBlockElement, $this->innerBlockRequired, true))) {
             return $str;
         }
 
@@ -327,11 +321,10 @@ class Typography
      */
     public function nl2brExceptPre(string $str): string
     {
-        $newstr   = '';
-        $docTypes = new DocTypes();
+        $newstr = '';
 
         for ($ex = explode('pre>', $str), $ct = count($ex), $i = 0; $i < $ct; $i++) {
-            $xhtml = ! ($docTypes->html5 ?? false);
+            $xhtml = ! (config('DocTypes')->html5 ?? false);
             $newstr .= (($i % 2) === 0) ? nl2br($ex[$i], $xhtml) : $ex[$i];
 
             if ($ct - 1 !== $i) {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -15,6 +13,7 @@ namespace CodeIgniter\Commands\Database;
 
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
+use Config\Services;
 use Throwable;
 
 /**
@@ -55,10 +54,11 @@ class MigrateRollback extends BaseCommand
     /**
      * the Command's Options
      *
-     * @var array<string, string>
+     * @var array
      */
     protected $options = [
         '-b' => 'Specify a batch to roll back to; e.g. "3" to return to batch #3',
+        '-g' => 'Set database group',
         '-f' => 'Force command - this option allows you to bypass the confirmation question when running this command in a production environment',
     ];
 
@@ -78,7 +78,12 @@ class MigrateRollback extends BaseCommand
             // @codeCoverageIgnoreEnd
         }
 
-        $runner = service('migrations');
+        $runner = Services::migrations();
+        $group  = $params['g'] ?? CLI::getOption('g');
+
+        if (is_string($group)) {
+            $runner->setGroup($group);
+        }
 
         try {
             $batch = $params['b'] ?? CLI::getOption('b') ?? $runner->getLastBatch() - 1;

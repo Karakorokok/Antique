@@ -11,7 +11,7 @@
 
 namespace CodeIgniter\View;
 
-use CodeIgniter\Autoloader\FileLocatorInterface;
+use CodeIgniter\Autoloader\FileLocator;
 use CodeIgniter\View\Exceptions\ViewException;
 use Config\View as ViewConfig;
 use ParseError;
@@ -19,11 +19,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Class for parsing pseudo-vars
- *
- * @phpstan-type parser_callable (callable(mixed): mixed)
- * @phpstan-type parser_callable_string (callable(mixed): mixed)&string
- *
- * @see \CodeIgniter\View\ParserTest
  */
 class Parser extends View
 {
@@ -63,8 +58,7 @@ class Parser extends View
     /**
      * Stores any plugins registered at run-time.
      *
-     * @var         array<string, callable|list<string>|string>
-     * @phpstan-var array<string, array<parser_callable_string>|parser_callable_string|parser_callable>
+     * @var array
      */
     protected $plugins = [];
 
@@ -79,17 +73,12 @@ class Parser extends View
     /**
      * Constructor
      *
-     * @param FileLocatorInterface|null $loader
+     * @param FileLocator|null $loader
      */
-    public function __construct(
-        ViewConfig $config,
-        ?string $viewPath = null,
-        $loader = null,
-        ?bool $debug = null,
-        ?LoggerInterface $logger = null
-    ) {
+    public function __construct(ViewConfig $config, ?string $viewPath = null, $loader = null, ?bool $debug = null, ?LoggerInterface $logger = null)
+    {
         // Ensure user plugins override core plugins.
-        $this->plugins = $config->plugins;
+        $this->plugins = $config->plugins ?? [];
 
         parent::__construct($config, $viewPath, $loader, $debug, $logger);
     }
@@ -108,7 +97,7 @@ class Parser extends View
         }
 
         $fileExt = pathinfo($view, PATHINFO_EXTENSION);
-        $view    = ($fileExt === '') ? $view . '.php' : $view; // allow Views as .html, .tpl, etc (from CI3)
+        $view    = empty($fileExt) ? $view . '.php' : $view; // allow Views as .html, .tpl, etc (from CI3)
 
         $cacheName = $options['cache_name'] ?? str_replace('.php', '', $view);
 
@@ -125,8 +114,8 @@ class Parser extends View
             $fileOrig = $file;
             $file     = $this->loader->locateFile($view, 'Views');
 
-            // locateFile() will return false if the file cannot be found.
-            if ($file === false) {
+            // locateFile will return an empty string if the file cannot be found.
+            if (empty($file)) {
                 throw ViewException::forInvalidFile($fileOrig);
             }
         }
@@ -190,13 +179,12 @@ class Parser extends View
      * so that the variable is correctly handled within the
      * parsing itself, and contexts (including raw) are respected.
      *
-     * @param         non-empty-string|null                     $context The context to escape it for.
-     *                                                                   If 'raw', no escaping will happen.
-     * @phpstan-param null|'html'|'js'|'css'|'url'|'attr'|'raw' $context
+     * @param string|null $context The context to escape it for: html, css, js, url, raw
+     *                             If 'raw', no escaping will happen
      */
     public function setData(array $data = [], ?string $context = null): RendererInterface
     {
-        if ($context !== null && $context !== '') {
+        if (! empty($context)) {
             foreach ($data as $key => &$value) {
                 if (is_array($value)) {
                     foreach ($value as &$obj) {
@@ -328,7 +316,7 @@ class Parser extends View
                     if (is_array($val)) {
                         $pair = $this->parsePair($key, $val, $match[1]);
 
-                        if ($pair !== []) {
+                        if (! empty($pair)) {
                             $pairs[array_keys($pair)[0]] = true;
 
                             $temp = array_merge($temp, $pair);
@@ -338,7 +326,7 @@ class Parser extends View
                     }
 
                     if (is_object($val)) {
-                        $val = 'Class: ' . $val::class;
+                        $val = 'Class: ' . get_class($val);
                     } elseif (is_resource($val)) {
                         $val = 'Resource';
                     }
@@ -468,7 +456,7 @@ class Parser extends View
 
         try {
             eval('?>' . $template . '<?php ');
-        } catch (ParseError) {
+        } catch (ParseError $e) {
             ob_end_clean();
 
             throw ViewException::forTagSyntaxError(str_replace(['?>', '<?php '], '', $template));
@@ -521,7 +509,7 @@ class Parser extends View
         return preg_replace_callback($pattern, function ($matches) use ($content, $escape) {
             // Check for {! !} syntax to not escape this one.
             if (
-                str_starts_with($matches[0], $this->leftDelimiter . '!')
+                strpos($matches[0], $this->leftDelimiter . '!') === 0
                 && substr($matches[0], -1 - strlen($this->rightDelimiter)) === '!' . $this->rightDelimiter
             ) {
                 $escape = false;
@@ -540,9 +528,9 @@ class Parser extends View
 
         // Our regex earlier will leave all chained values on a single line
         // so we need to break them apart so we can apply them all.
-        $filters = (isset($matches[1]) && $matches[1] !== '') ? explode('|', $matches[1]) : [];
+        $filters = ! empty($matches[1]) ? explode('|', $matches[1]) : [];
 
-        if ($escape && $filters === [] && ($context = $this->shouldAddEscaping($orig))) {
+        if ($escape && empty($filters) && ($context = $this->shouldAddEscaping($orig))) {
             $filters[] = "esc({$context})";
         }
 
@@ -568,11 +556,11 @@ class Parser extends View
             }
         }
         // No pipes, then we know we need to escape
-        elseif (! str_contains($key, '|')) {
+        elseif (strpos($key, '|') === false) {
             $escape = 'html';
         }
         // If there's a `noescape` then we're definitely false.
-        elseif (str_contains($key, 'noescape')) {
+        elseif (strpos($key, 'noescape') !== false) {
             $escape = false;
         }
         // If no `esc` filter is found, then we'll need to add one.
@@ -595,10 +583,10 @@ class Parser extends View
             preg_match('/\([\w<>=\/\\\,:.\-\s\+]+\)/u', $filter, $param);
 
             // Remove the () and spaces to we have just the parameter left
-            $param = ($param !== []) ? trim($param[0], '() ') : null;
+            $param = ! empty($param) ? trim($param[0], '() ') : null;
 
             // Params can be separated by commas to allow multiple parameters for the filter
-            if ($param !== null && $param !== '') {
+            if (! empty($param)) {
                 $param = explode(',', $param);
 
                 // Clean it up
@@ -610,18 +598,17 @@ class Parser extends View
             }
 
             // Get our filter name
-            $filter = $param !== [] ? trim(strtolower(substr($filter, 0, strpos($filter, '(')))) : trim($filter);
+            $filter = ! empty($param) ? trim(strtolower(substr($filter, 0, strpos($filter, '(')))) : trim($filter);
 
             if (! array_key_exists($filter, $this->config->filters)) {
                 continue;
             }
 
             // Filter it....
-            // We can't know correct param types, so can't set `declare(strict_types=1)`.
             $replace = $this->config->filters[$filter]($replace, ...$param);
         }
 
-        return (string) $replace;
+        return $replace;
     }
 
     // Plugins

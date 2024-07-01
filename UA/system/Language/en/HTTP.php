@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -21,11 +19,9 @@ return [
 
     // IncomingRequest
     'invalidNegotiationType' => '"{0}" is not a valid negotiation type. Must be one of: media, charset, encoding, language.',
-    'invalidJSON'            => 'Failed to parse JSON string. Error: {0}',
-    'unsupportedJSONFormat'  => 'The provided JSON format is not supported.',
 
     // Message
-    'invalidHTTPProtocol' => 'Invalid HTTP Protocol Version: {0}',
+    'invalidHTTPProtocol' => 'Invalid HTTP Protocol Version. Must be one of: {0}',
 
     // Negotiate
     'emptySupportedNegotiations' => 'You must provide an array of supported values to all Negotiations.',

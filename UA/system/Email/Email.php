@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -22,8 +20,6 @@ use ErrorException;
  * CodeIgniter Email Class
  *
  * Permits email to be sent using Mail, Sendmail, or SMTP.
- *
- * @see \CodeIgniter\Email\EmailTest
  */
 class Email
 {
@@ -73,7 +69,7 @@ class Email
     public $protocol = 'mail';
 
     /**
-     * STMP Server Hostname
+     * STMP Server host
      *
      * @var string
      */
@@ -117,9 +113,7 @@ class Email
     /**
      * SMTP Encryption
      *
-     * @var string '', 'tls' or 'ssl'. 'tls' will issue a STARTTLS command
-     *             to the server. 'ssl' means implicit SSL. Connection on port
-     *             465 should set this to ''.
+     * @var string Empty, 'tls' or 'ssl'
      */
     public $SMTPCrypto = '';
 
@@ -298,7 +292,7 @@ class Email
     /**
      * Raw debug messages
      *
-     * @var list<string>
+     * @var string[]
      */
     private array $debugMessageRaw = [];
 
@@ -354,7 +348,7 @@ class Email
      * Character sets valid for 7-bit encoding,
      * excluding language suffix.
      *
-     * @var list<string>
+     * @var array
      */
     protected $baseCharsets = [
         'us-ascii',
@@ -660,7 +654,7 @@ class Email
     public function attach($file, $disposition = '', $newname = null, $mime = '')
     {
         if ($mime === '') {
-            if (! str_contains($file, '://') && ! is_file($file)) {
+            if (strpos($file, '://') === false && ! is_file($file)) {
                 $this->setErrorMessage(lang('Email.attachmentMissing', [$file]));
 
                 return false;
@@ -707,20 +701,10 @@ class Email
     public function setAttachmentCID($filename)
     {
         foreach ($this->attachments as $i => $attachment) {
-            // For file path.
             if ($attachment['name'][0] === $filename) {
                 $this->attachments[$i]['multipart'] = 'related';
 
                 $this->attachments[$i]['cid'] = uniqid(basename($attachment['name'][0]) . '@', true);
-
-                return $this->attachments[$i]['cid'];
-            }
-
-            // For buffer string.
-            if ($attachment['name'][1] === $filename) {
-                $this->attachments[$i]['multipart'] = 'related';
-
-                $this->attachments[$i]['cid'] = uniqid(basename($attachment['name'][1]) . '@', true);
 
                 return $this->attachments[$i]['cid'];
             }
@@ -743,14 +727,14 @@ class Email
     }
 
     /**
-     * @param array|string $email
+     * @param string $email
      *
      * @return array
      */
     protected function stringToArray($email)
     {
         if (! is_array($email)) {
-            return (str_contains($email, ',')) ? preg_split('/[\s,]/', $email, -1, PREG_SPLIT_NO_EMPTY) : (array) trim($email);
+            return (strpos($email, ',') !== false) ? preg_split('/[\s,]/', $email, -1, PREG_SPLIT_NO_EMPTY) : (array) trim($email);
         }
 
         return $email;
@@ -874,7 +858,7 @@ class Email
         }
 
         foreach ($this->baseCharsets as $charset) {
-            if (str_starts_with($this->charset, $charset)) {
+            if (strpos($this->charset, $charset) === 0) {
                 $this->encoding = '7bit';
 
                 break;
@@ -909,7 +893,7 @@ class Email
     {
         $timezone = date('Z');
         $operator = ($timezone[0] === '-') ? '-' : '+';
-        $timezone = abs((int) $timezone);
+        $timezone = abs($timezone);
         $timezone = floor($timezone / 3600) * 100 + ($timezone % 3600) / 60;
 
         return sprintf('%s %s%04d', date('D, j M Y H:i:s'), $operator, $timezone);
@@ -1023,7 +1007,7 @@ class Email
             $charlim = empty($this->wrapChars) ? 76 : $this->wrapChars;
         }
 
-        if (str_contains($str, "\r")) {
+        if (strpos($str, "\r") !== false) {
             $str = str_replace(["\r\n", "\r"], "\n", $str);
         }
 
@@ -1080,8 +1064,6 @@ class Email
 
     /**
      * Build final headers
-     *
-     * @return void
      */
     protected function buildHeaders()
     {
@@ -1095,8 +1077,6 @@ class Email
 
     /**
      * Write Headers as a string
-     *
-     * @return void
      */
     protected function writeHeaders()
     {
@@ -1123,8 +1103,6 @@ class Email
 
     /**
      * Build Final Body and attachments
-     *
-     * @return void
      */
     protected function buildMessage()
     {
@@ -1248,13 +1226,13 @@ class Email
                     . $this->prepQuotedPrintable($this->body) . $this->newline . $this->newline
                     . '--' . $altBoundary . '--' . $this->newline . $this->newline;
 
-                if (isset($relBoundary)) {
+                if (! empty($relBoundary)) {
                     $body .= $this->newline . $this->newline;
                     $this->appendAttachments($body, $relBoundary, 'related');
                 }
 
                 // multipart/mixed attachments
-                if (isset($atcBoundary)) {
+                if (! empty($atcBoundary)) {
                     $body .= $this->newline . $this->newline;
                     $this->appendAttachments($body, $atcBoundary, 'mixed');
                 }
@@ -1285,8 +1263,6 @@ class Email
      * @param string      $body      Message body to append to
      * @param string      $boundary  Multipart boundary
      * @param string|null $multipart When provided, only attachments of this type will be processed
-     *
-     * @return void
      */
     protected function appendAttachments(&$body, $boundary, $multipart = null)
     {
@@ -1421,7 +1397,7 @@ class Email
         $str = preg_replace(['| +|', '/\x00+/'], [' ', ''], $str);
 
         // Standardize newlines
-        if (str_contains($str, "\r")) {
+        if (strpos($str, "\r") !== false) {
             $str = str_replace(["\r\n", "\r"], "\n", $str);
         }
 
@@ -1603,8 +1579,6 @@ class Email
 
     /**
      * Batch Bcc Send. Sends groups of BCCs in batches
-     *
-     * @return void
      */
     public function batchBCCSend()
     {
@@ -1649,14 +1623,15 @@ class Email
 
     /**
      * Unwrap special elements
-     *
-     * @return void
      */
     protected function unwrapSpecials()
     {
         $this->finalBody = preg_replace_callback(
             '/\{unwrap\}(.*?)\{\/unwrap\}/si',
-            $this->removeNLCallback(...),
+            [
+                $this,
+                'removeNLCallback',
+            ],
             $this->finalBody
         );
     }
@@ -1664,15 +1639,13 @@ class Email
     /**
      * Strip line-breaks via callback
      *
-     * @used-by unwrapSpecials()
-     *
-     * @param list<string> $matches
+     * @param string $matches
      *
      * @return string
      */
     protected function removeNLCallback($matches)
     {
-        if (str_contains($matches[1], "\r") || str_contains($matches[1], "\n")) {
+        if (strpos($matches[1], "\r") !== false || strpos($matches[1], "\n") !== false) {
             $matches[1] = str_replace(["\r\n", "\r", "\n"], '', $matches[1]);
         }
 
@@ -1853,7 +1826,7 @@ class Email
         $this->setErrorMessage($reply);
         $this->SMTPEnd();
 
-        if (! str_starts_with($reply, '250')) {
+        if (strpos($reply, '250') !== 0) {
             $this->setErrorMessage(lang('Email.SMTPError', [$reply]));
 
             return false;
@@ -1864,8 +1837,6 @@ class Email
 
     /**
      * Shortcut to send RSET or QUIT depending on keep-alive
-     *
-     * @return void
      */
     protected function SMTPEnd()
     {
@@ -1883,13 +1854,9 @@ class Email
 
         $ssl = '';
 
-        // Connection to port 465 should use implicit TLS (without STARTTLS)
-        // as per RFC 8314.
         if ($this->SMTPPort === 465) {
             $ssl = 'tls://';
-        }
-        // But if $SMTPCrypto is set to `ssl`, SSL can be used.
-        if ($this->SMTPCrypto === 'ssl') {
+        } elseif ($this->SMTPCrypto === 'ssl') {
             $ssl = 'ssl://';
         }
 
@@ -2025,11 +1992,11 @@ class Email
         $this->sendData('AUTH LOGIN');
         $reply = $this->getSMTPData();
 
-        if (str_starts_with($reply, '503')) {    // Already authenticated
+        if (strpos($reply, '503') === 0) {    // Already authenticated
             return true;
         }
 
-        if (! str_starts_with($reply, '334')) {
+        if (strpos($reply, '334') !== 0) {
             $this->setErrorMessage(lang('Email.failedSMTPLogin', [$reply]));
 
             return false;
@@ -2038,7 +2005,7 @@ class Email
         $this->sendData(base64_encode($this->SMTPUser));
         $reply = $this->getSMTPData();
 
-        if (! str_starts_with($reply, '334')) {
+        if (strpos($reply, '334') !== 0) {
             $this->setErrorMessage(lang('Email.SMTPAuthUsername', [$reply]));
 
             return false;
@@ -2047,7 +2014,7 @@ class Email
         $this->sendData(base64_encode($this->SMTPPass));
         $reply = $this->getSMTPData();
 
-        if (! str_starts_with($reply, '235')) {
+        if (strpos($reply, '235') !== 0) {
             $this->setErrorMessage(lang('Email.SMTPAuthPassword', [$reply]));
 
             return false;
@@ -2189,8 +2156,6 @@ class Email
 
     /**
      * @param string $msg
-     *
-     * @return void
      */
     protected function setErrorMessage($msg)
     {

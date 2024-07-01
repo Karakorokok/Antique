@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -41,8 +39,6 @@ abstract class BaseResource extends Controller
 
     /**
      * Constructor.
-     *
-     * @return void
      */
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
@@ -56,8 +52,6 @@ abstract class BaseResource extends Controller
      * Given either the name or the object, determine the other.
      *
      * @param object|string|null $which
-     *
-     * @return void
      */
     public function setModel($which = null)
     {
@@ -71,7 +65,7 @@ abstract class BaseResource extends Controller
         }
 
         if (! empty($this->model) && empty($this->modelName)) {
-            $this->modelName = $this->model::class;
+            $this->modelName = get_class($this->model);
         }
     }
 }

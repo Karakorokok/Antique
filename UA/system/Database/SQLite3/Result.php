@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -144,7 +142,7 @@ class Result extends BaseResult
         $classObj = new $className();
 
         if (is_subclass_of($className, Entity::class)) {
-            return $classObj->injectRawData($row);
+            return $classObj->setAttributes($row);
         }
 
         $classSet = Closure::bind(function ($key, $value) {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -15,16 +13,11 @@ namespace CodeIgniter\HTTP;
 
 use BadMethodCallException;
 use CodeIgniter\HTTP\Exceptions\HTTPException;
-use Config\App;
-use InvalidArgumentException;
-use Stringable;
 
 /**
  * Abstraction for a uniform resource identifier (URI).
- *
- * @see \CodeIgniter\HTTP\URITest
  */
-class URI implements Stringable
+class URI
 {
     /**
      * Sub-delimiters used in query strings and fragments.
@@ -40,15 +33,11 @@ class URI implements Stringable
      * Current URI string
      *
      * @var string
-     *
-     * @deprecated 4.4.0 Not used.
      */
     protected $uriString;
 
     /**
      * The Current baseURL.
-     *
-     * @deprecated 4.4.0 Use SiteURI instead.
      */
     private ?string $baseURL = null;
 
@@ -98,6 +87,11 @@ class URI implements Stringable
 
     /**
      * URI path.
+     *
+     * Note: The constructor of the IncomingRequest class changes the path of
+     *      the URI object held by the IncomingRequest class to a path relative
+     *      to the baseURL. If the baseURL contains subfolders, this value
+     *      will be different from the current URI path.
      *
      * @var string
      */
@@ -166,25 +160,25 @@ class URI implements Stringable
         ?string $fragment = null
     ): string {
         $uri = '';
-        if ($scheme !== null && $scheme !== '') {
+        if (! empty($scheme)) {
             $uri .= $scheme . '://';
         }
 
-        if ($authority !== null && $authority !== '') {
+        if (! empty($authority)) {
             $uri .= $authority;
         }
 
         if (isset($path) && $path !== '') {
-            $uri .= ! str_ends_with($uri, '/')
+            $uri .= substr($uri, -1, 1) !== '/'
                 ? '/' . ltrim($path, '/')
                 : ltrim($path, '/');
         }
 
-        if ($query !== '' && $query !== null) {
+        if ($query) {
             $uri .= '?' . $query;
         }
 
-        if ($fragment !== '' && $fragment !== null) {
+        if ($fragment) {
             $uri .= '#' . $fragment;
         }
 
@@ -231,12 +225,12 @@ class URI implements Stringable
         $output = trim($output, '/ ');
 
         // Add leading slash if necessary
-        if (str_starts_with($path, '/')) {
+        if (strpos($path, '/') === 0) {
             $output = '/' . $output;
         }
 
         // Add trailing slash if necessary
-        if ($output !== '/' && str_ends_with($path, '/')) {
+        if ($output !== '/' && substr($path, -1, 1) === '/') {
             $output .= '/';
         }
 
@@ -264,8 +258,6 @@ class URI implements Stringable
      * If $silent == true, then will not throw exceptions and will
      * attempt to continue gracefully.
      *
-     * @deprecated 4.4.0 Method not in PSR-7
-     *
      * @return URI
      */
     public function setSilent(bool $silent = true)
@@ -278,8 +270,6 @@ class URI implements Stringable
     /**
      * If $raw == true, then will use parseStr() method
      * instead of native parse_str() function.
-     *
-     * Note: Method not in PSR-7
      *
      * @return URI
      */
@@ -296,8 +286,6 @@ class URI implements Stringable
      * @return URI
      *
      * @throws HTTPException
-     *
-     * @deprecated 4.4.0 This method will be private.
      */
     public function setURI(?string $uri = null)
     {
@@ -414,8 +402,6 @@ class URI implements Stringable
     /**
      * Temporarily sets the URI to show a password in userInfo. Will
      * reset itself after the first call to authority().
-     *
-     * Note: Method not in PSR-7
      *
      * @return URI
      */
@@ -546,28 +532,22 @@ class URI implements Stringable
 
     /**
      * Returns the value of a specific segment of the URI path.
-     * Allows to get only existing segments or the next one.
      *
-     * @param int    $number  Segment number starting at 1
+     * @param int    $number  Segment number
      * @param string $default Default value
      *
-     * @return string The value of the segment. If you specify the last +1
-     *                segment, the $default value. If you specify the last +2
-     *                or more throws HTTPException.
+     * @return string The value of the segment. If no segment is found,
+     *                throws InvalidArgumentError
      */
     public function getSegment(int $number, string $default = ''): string
     {
-        if ($number < 1) {
-            throw HTTPException::forURISegmentOutOfRange($number);
-        }
-
-        if ($number > count($this->segments) + 1 && ! $this->silent) {
-            throw HTTPException::forURISegmentOutOfRange($number);
-        }
-
         // The segment should treat the array as 1-based for the user
         // but we still have to deal with a zero-based array.
         $number--;
+
+        if ($number > count($this->segments) && ! $this->silent) {
+            throw HTTPException::forURISegmentOutOfRange($number);
+        }
 
         return $this->segments[$number] ?? $default;
     }
@@ -576,18 +556,15 @@ class URI implements Stringable
      * Set the value of a specific segment of the URI path.
      * Allows to set only existing segments or add new one.
      *
-     * Note: Method not in PSR-7
-     *
-     * @param int        $number Segment number starting at 1
-     * @param int|string $value
+     * @param mixed $value (string or int)
      *
      * @return $this
      */
     public function setSegment(int $number, $value)
     {
-        if ($number < 1) {
-            throw HTTPException::forURISegmentOutOfRange($number);
-        }
+        // The segment should treat the array as 1-based for the user
+        // but we still have to deal with a zero-based array.
+        $number--;
 
         if ($number > count($this->segments) + 1) {
             if ($this->silent) {
@@ -597,10 +574,6 @@ class URI implements Stringable
             throw HTTPException::forURISegmentOutOfRange($number);
         }
 
-        // The segment should treat the array as 1-based for the user
-        // but we still have to deal with a zero-based array.
-        $number--;
-
         $this->segments[$number] = $value;
         $this->refreshPath();
 
@@ -609,8 +582,6 @@ class URI implements Stringable
 
     /**
      * Returns the total number of segments.
-     *
-     * Note: Method not in PSR-7
      */
     public function getTotalSegments(): int
     {
@@ -651,18 +622,18 @@ class URI implements Stringable
     private function changeSchemeAndPath(string $scheme, string $path): array
     {
         // Check if this is an internal URI
-        $config  = config(App::class);
+        $config  = config('App');
         $baseUri = new self($config->baseURL);
 
         if (
-            str_starts_with($this->getScheme(), 'http')
+            substr($this->getScheme(), 0, 4) === 'http'
             && $this->getHost() === $baseUri->getHost()
         ) {
             // Check for additional segments
             $basePath = trim($baseUri->getPath(), '/') . '/';
             $trimPath = ltrim($path, '/');
 
-            if ($basePath !== '/' && ! str_starts_with($trimPath, $basePath)) {
+            if ($basePath !== '/' && strpos($trimPath, $basePath) !== 0) {
                 $path = $basePath . $trimPath;
             }
 
@@ -677,8 +648,6 @@ class URI implements Stringable
 
     /**
      * Parses the given string and saves the appropriate authority pieces.
-     *
-     * Note: Method not in PSR-7
      *
      * @return $this
      */
@@ -709,8 +678,6 @@ class URI implements Stringable
      * @see https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
      *
      * @return $this
-     *
-     * @deprecated 4.4.0 Use `withScheme()` instead.
      */
     public function setScheme(string $str)
     {
@@ -721,42 +688,12 @@ class URI implements Stringable
     }
 
     /**
-     * Return an instance with the specified scheme.
-     *
-     * This method MUST retain the state of the current instance, and return
-     * an instance that contains the specified scheme.
-     *
-     * Implementations MUST support the schemes "http" and "https" case
-     * insensitively, and MAY accommodate other schemes if required.
-     *
-     * An empty scheme is equivalent to removing the scheme.
-     *
-     * @param string $scheme The scheme to use with the new instance.
-     *
-     * @return static A new instance with the specified scheme.
-     *
-     * @throws InvalidArgumentException for invalid or unsupported schemes.
-     */
-    public function withScheme(string $scheme)
-    {
-        $uri = clone $this;
-
-        $scheme = strtolower($scheme);
-
-        $uri->scheme = preg_replace('#:(//)?$#', '', $scheme);
-
-        return $uri;
-    }
-
-    /**
      * Sets the userInfo/Authority portion of the URI.
      *
      * @param string $user The user's username
      * @param string $pass The user's password
      *
      * @return $this
-     *
-     * @TODO PSR-7: Should be `withUserInfo($user, $password = null)`.
      */
     public function setUserInfo(string $user, string $pass)
     {
@@ -770,8 +707,6 @@ class URI implements Stringable
      * Sets the host name to use.
      *
      * @return $this
-     *
-     * @TODO PSR-7: Should be `withHost($host)`.
      */
     public function setHost(string $str)
     {
@@ -783,9 +718,9 @@ class URI implements Stringable
     /**
      * Sets the port portion of the URI.
      *
-     * @return $this
+     * @param int $port
      *
-     * @TODO PSR-7: Should be `withPort($port)`.
+     * @return $this
      */
     public function setPort(?int $port = null)
     {
@@ -810,8 +745,6 @@ class URI implements Stringable
      * Sets the path portion of the URI.
      *
      * @return $this
-     *
-     * @TODO PSR-7: Should be `withPath($port)`.
      */
     public function setPath(string $path)
     {
@@ -828,8 +761,6 @@ class URI implements Stringable
      * Sets the current baseURL.
      *
      * @interal
-     *
-     * @deprecated Use SiteURI instead.
      */
     public function setBaseURL(string $baseURL): void
     {
@@ -840,8 +771,6 @@ class URI implements Stringable
      * Returns the current baseURL.
      *
      * @interal
-     *
-     * @deprecated Use SiteURI instead.
      */
     public function getBaseURL(): string
     {
@@ -856,8 +785,6 @@ class URI implements Stringable
      * Sets the path portion of the URI based on segments.
      *
      * @return $this
-     *
-     * @deprecated This method will be private.
      */
     public function refreshPath()
     {
@@ -875,12 +802,10 @@ class URI implements Stringable
      * to clean the various parts of the query keys and values.
      *
      * @return $this
-     *
-     * @TODO PSR-7: Should be `withQuery($query)`.
      */
     public function setQuery(string $query)
     {
-        if (str_contains($query, '#')) {
+        if (strpos($query, '#') !== false) {
             if ($this->silent) {
                 return $this;
             }
@@ -889,7 +814,7 @@ class URI implements Stringable
         }
 
         // Can't have leading ?
-        if ($query !== '' && str_starts_with($query, '?')) {
+        if (! empty($query) && strpos($query, '?') === 0) {
             $query = substr($query, 1);
         }
 
@@ -907,8 +832,6 @@ class URI implements Stringable
      * portion of the URI.
      *
      * @return URI
-     *
-     * @TODO: PSR-7: Should be `withQueryParams(array $query)`
      */
     public function setQueryArray(array $query)
     {
@@ -920,9 +843,7 @@ class URI implements Stringable
     /**
      * Adds a single new element to the query vars.
      *
-     * Note: Method not in PSR-7
-     *
-     * @param int|string|null $value
+     * @param mixed $value
      *
      * @return $this
      */
@@ -935,8 +856,6 @@ class URI implements Stringable
 
     /**
      * Removes one or more query vars from the URI.
-     *
-     * Note: Method not in PSR-7
      *
      * @param string ...$params
      *
@@ -954,8 +873,6 @@ class URI implements Stringable
     /**
      * Filters the query variables so that only the keys passed in
      * are kept. The rest are removed from the object.
-     *
-     * Note: Method not in PSR-7
      *
      * @param string ...$params
      *
@@ -984,8 +901,6 @@ class URI implements Stringable
      * @see https://tools.ietf.org/html/rfc3986#section-3.5
      *
      * @return $this
-     *
-     * @TODO PSR-7: Should be `withFragment($fragment)`.
      */
     public function setFragment(string $string)
     {
@@ -1011,10 +926,10 @@ class URI implements Stringable
         $path = self::removeDotSegments($path);
 
         // Fix up some leading slash edge cases...
-        if (str_starts_with($orig, './')) {
+        if (strpos($orig, './') === 0) {
             $path = '/' . $path;
         }
-        if (str_starts_with($orig, '../')) {
+        if (strpos($orig, '../') === 0) {
             $path = '/' . $path;
         }
 
@@ -1030,8 +945,6 @@ class URI implements Stringable
 
     /**
      * Saves our parts from a parse_url call.
-     *
-     * @return void
      */
     protected function applyParts(array $parts)
     {
@@ -1100,7 +1013,7 @@ class URI implements Stringable
         $transformed = clone $relative;
 
         // 5.2.2 Transform References in a non-strict method (no scheme)
-        if ($relative->getAuthority() !== '') {
+        if (! empty($relative->getAuthority())) {
             $transformed
                 ->setAuthority($relative->getAuthority())
                 ->setPath($relative->getPath())
@@ -1109,13 +1022,13 @@ class URI implements Stringable
             if ($relative->getPath() === '') {
                 $transformed->setPath($this->getPath());
 
-                if ($relative->getQuery() !== '') {
+                if ($relative->getQuery()) {
                     $transformed->setQuery($relative->getQuery());
                 } else {
                     $transformed->setQuery($this->getQuery());
                 }
             } else {
-                if (str_starts_with($relative->getPath(), '/')) {
+                if (strpos($relative->getPath(), '/') === 0) {
                     $transformed->setPath($relative->getPath());
                 } else {
                     $transformed->setPath($this->mergePaths($this, $relative));
@@ -1142,7 +1055,7 @@ class URI implements Stringable
      */
     protected function mergePaths(self $base, self $reference): string
     {
-        if ($base->getAuthority() !== '' && $base->getPath() === '') {
+        if (! empty($base->getAuthority()) && $base->getPath() === '') {
             return '/' . ltrim($reference->getPath(), '/ ');
         }
 

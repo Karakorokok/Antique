@@ -1,45 +1,56 @@
-<?= $this->extend('default/main'); ?>
+<?= $this->extend('User/default/main'); ?>
 
 
 <?= $this->section('content') ?>
 
-    <?= $this->include('shared/navbar') ?>
+    <?= $this->include('User/shared/navbar') ?>
 
     <div class="container">
         <div class="my-4">
             <div>
 
                 <div class="m-3">
-                    <a href="/barbaza-menro/home" class="btn btn-dark"><i class="fa-solid fa-arrow-left me-2"></i>Home</a>
+                    <a href="/User/Home" class="btn btn-dark">Go Back to Home</a>
                 </div>
 
-                <div class="bg-custom-yellow mx-3 p-2 rounded">
+                <!-- <div class="bg-custom-yellow mx-3 p-2 rounded">
                     <div class="h5">
-                        Points: <span>1000</span>
+                    <a href="" class="btn btn-primary"><i class="fa-solid fa-arrow-left me-2"></i>Points Transaction History</a>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- table -->
-                <div class="list-wrapper row mt-5">
-                    <?php for($i = 0;$i < 10; $i++) { ?>
-                        <div class="col-md-3 col-6 list-item mb-3">
-                            <div class="card h-100">
-                                <img src="https://i3.wp.com/assets.tiltify.com/uploads/media_type/image/203025/blob-09636982-a21a-494b-bbe4-3692c2720ae3.jpeg" class="card-img-top object-fit-scale w-100 mt-2" height="100">
-                                <div class="card-body">
-                                    <h6 class="card-title"></h6>
-                                    <h6 class="card-title"></h6>
-                                    <a href="" class="btn btn-outline-danger w-100 mb-2">jollibee</a>
-                                    <a href="" class="btn btn-info w-100">amen</a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php } ?>
+                 <div></div>
+                <div class="container table-responsive m-3">
+                    <table class="table table-striped" id="homePageTable">
+                    <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Rewards Name</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Voucher</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Date</th>
+                        </thead>
+                        <tbody>
+                        <?php $x = 0;?>
+                        <?php foreach($Transactions as $Transaction): ?>
+                            <tr>
+                                <?php $x = $x+1; ?>
+                                <td><?php echo $x; ?></td>
+                                
+                                <td><?=$Transaction->rewards_name;?></td>
+                                <td><?=$Transaction->points_used?></td>
+                                <td><?=$Transaction->voucher?></td>
+                                <td><?=$Transaction->status;?></td>
+                                <td><?=$Transaction->created_at;?></td>
+                                
+                            </tr>
+                      
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-
-                <div class="float-end">
-                    <div id="pagination-container" class=""></div>
-                </div>
-               
                 <!-- end table -->
             </div>
         </div> 
@@ -52,22 +63,11 @@
 <?= $this->section('javascripts') ?>
 
     <script>
-        var items = $(".list-wrapper .list-item");
-        var numItems = items.length;
-        var perPage = 8;
+        $(document).ready(function(){
 
-        items.slice(perPage).hide();
+            	
+            new DataTable('#homePageTable');
 
-        $('#pagination-container').pagination({
-            items: numItems,
-            itemsOnPage: perPage,
-            prevText: "&laquo;",
-            nextText: "&raquo;",
-            onPageClick: function (pageNumber) {
-                var showFrom = perPage * (pageNumber - 1);
-                var showTo = showFrom + perPage;
-                items.hide().slice(showFrom, showTo).show();
-            }
         });
     </script>
 

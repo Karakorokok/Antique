@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -13,9 +11,9 @@ declare(strict_types=1);
 
 namespace CodeIgniter\Entity;
 
-use CodeIgniter\DataCaster\DataCaster;
 use CodeIgniter\Entity\Cast\ArrayCast;
 use CodeIgniter\Entity\Cast\BooleanCast;
+use CodeIgniter\Entity\Cast\CastInterface;
 use CodeIgniter\Entity\Cast\CSVCast;
 use CodeIgniter\Entity\Cast\DatetimeCast;
 use CodeIgniter\Entity\Cast\FloatCast;
@@ -35,8 +33,6 @@ use ReturnTypeWillChange;
 
 /**
  * Entity encapsulation, for use with CodeIgniter\Model
- *
- * @see \CodeIgniter\Entity\EntityTest
  */
 class Entity implements JsonSerializable
 {
@@ -49,16 +45,9 @@ class Entity implements JsonSerializable
      *  $datamap = [
      *      'class_property_name' => 'db_column_name'
      *  ];
-     *
-     * @var array<string, string>
      */
     protected $datamap = [];
 
-    /**
-     * The date fields.
-     *
-     * @var list<string>
-     */
     protected $dates = [
         'created_at',
         'updated_at',
@@ -68,8 +57,6 @@ class Entity implements JsonSerializable
     /**
      * Array of field names and the type of value to cast them as when
      * they are accessed.
-     *
-     * @var array<string, string>
      */
     protected $casts = [];
 
@@ -120,11 +107,6 @@ class Entity implements JsonSerializable
     protected $original = [];
 
     /**
-     * The data caster.
-     */
-    protected DataCaster $dataCaster;
-
-    /**
      * Holds info whenever properties have to be casted
      */
     private bool $_cast = true;
@@ -134,13 +116,6 @@ class Entity implements JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->dataCaster = new DataCaster(
-            array_merge($this->defaultCastHandlers, $this->castHandlers),
-            null,
-            null,
-            false
-        );
-
         $this->syncOriginal();
 
         $this->fill($data);
@@ -151,7 +126,7 @@ class Entity implements JsonSerializable
      * properties, using any `setCamelCasedProperty()` methods
      * that may or may not exist.
      *
-     * @param array<string, array|bool|float|int|object|string|null> $data
+     * @param array $data
      *
      * @return $this
      */
@@ -181,7 +156,7 @@ class Entity implements JsonSerializable
     {
         $this->_cast = $cast;
 
-        $keys = array_filter(array_keys($this->attributes), static fn ($key) => ! str_starts_with($key, '_'));
+        $keys = array_filter(array_keys($this->attributes), static fn ($key) => strpos($key, '_') !== 0);
 
         if (is_array($this->datamap)) {
             $keys = array_unique(
@@ -304,25 +279,13 @@ class Entity implements JsonSerializable
      *
      * @return $this
      */
-    public function injectRawData(array $data)
+    public function setAttributes(array $data)
     {
         $this->attributes = $data;
 
         $this->syncOriginal();
 
         return $this;
-    }
-
-    /**
-     * Set raw data array without any mutations
-     *
-     * @return $this
-     *
-     * @deprecated Use injectRawData() instead.
-     */
-    public function setAttributes(array $data)
-    {
-        return $this->injectRawData($data);
     }
 
     /**
@@ -333,7 +296,7 @@ class Entity implements JsonSerializable
      */
     protected function mapProperty(string $key)
     {
-        if ($this->datamap === []) {
+        if (empty($this->datamap)) {
             return $key;
         }
 
@@ -361,8 +324,8 @@ class Entity implements JsonSerializable
 
     /**
      * Provides the ability to cast an item as a specific data type.
-     * Add ? at the beginning of the type (i.e. ?string) to get `null`
-     * instead of casting $value when $value is null.
+     * Add ? at the beginning of $type  (i.e. ?string) to get NULL
+     * instead of casting $value if $value === null
      *
      * @param bool|float|int|string|null $value     Attribute value
      * @param string                     $attribute Attribute name
@@ -374,10 +337,58 @@ class Entity implements JsonSerializable
      */
     protected function castAs($value, string $attribute, string $method = 'get')
     {
-        return $this->dataCaster
-            // @TODO if $casts is readonly, we don't need the setTypes() method.
-            ->setTypes($this->casts)
-            ->castAs($value, $attribute, $method);
+        if (empty($this->casts[$attribute])) {
+            return $value;
+        }
+
+        $type = $this->casts[$attribute];
+
+        $isNullable = false;
+
+        if (strpos($type, '?') === 0) {
+            $isNullable = true;
+
+            if ($value === null) {
+                return null;
+            }
+
+            $type = substr($type, 1);
+        }
+
+        // In order not to create a separate handler for the
+        // json-array type, we transform the required one.
+        $type = $type === 'json-array' ? 'json[array]' : $type;
+
+        if (! in_array($method, ['get', 'set'], true)) {
+            throw CastException::forInvalidMethod($method);
+        }
+
+        $params = [];
+
+        // Attempt to retrieve additional parameters if specified
+        // type[param, param2,param3]
+        if (preg_match('/^(.+)\[(.+)\]$/', $type, $matches)) {
+            $type   = $matches[1];
+            $params = array_map('trim', explode(',', $matches[2]));
+        }
+
+        if ($isNullable) {
+            $params[] = 'nullable';
+        }
+
+        $type = trim($type, '[]');
+
+        $handlers = array_merge($this->defaultCastHandlers, $this->castHandlers);
+
+        if (empty($handlers[$type])) {
+            return $value;
+        }
+
+        if (! is_subclass_of($handlers[$type], CastInterface::class)) {
+            throw CastException::forInvalidInterface($handlers[$type]);
+        }
+
+        return $handlers[$type]::$method($value, $params);
     }
 
     /**
@@ -433,20 +444,12 @@ class Entity implements JsonSerializable
 
         $value = $this->castAs($value, $dbColumn, 'set');
 
-        // if a setter method exists for this key, use that method to
+        // if a set* method exists for this key, use that method to
         // insert this value. should be outside $isNullable check,
         // so maybe wants to do sth with null value automatically
         $method = 'set' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $dbColumn)));
 
-        // If a "`_set` + $key" method exists, it is a setter.
-        if (method_exists($this, '_' . $method)) {
-            $this->{'_' . $method}($value);
-
-            return;
-        }
-
-        // If a "`set` + $key" method exists, it is also a setter.
-        if (method_exists($this, $method) && $method !== 'setAttributes') {
+        if (method_exists($this, $method)) {
             $this->{$method}($value);
 
             return;
@@ -482,13 +485,9 @@ class Entity implements JsonSerializable
         // Convert to CamelCase for the method
         $method = 'get' . str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $dbColumn)));
 
-        // if a getter method exists for this key,
+        // if a get* method exists for this key,
         // use that method to insert this value.
-        if (method_exists($this, '_' . $method)) {
-            // If a "`_get` + $key" method exists, it is a getter.
-            $result = $this->{'_' . $method}();
-        } elseif (method_exists($this, $method)) {
-            // If a "`get` + $key" method exists, it is also a getter.
+        if (method_exists($this, $method)) {
             $result = $this->{$method}();
         }
 

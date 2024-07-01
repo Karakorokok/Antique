@@ -1,7 +1,6 @@
-
 body {
-    font-family: 'Roboto', sans-serif !important;
     background-color: rgb(225,225,229) !important;
+    font-family: 'Roboto', sans-serif !important;
 }
 
 .center {
@@ -16,14 +15,16 @@ body {
 }
 
 .bg-green-navbar {
-    background-color: rgb(126,217,87) !important;
-    color: rgb(255,255,255) !important;
+background-color: rgb(126,217,87) !important;
+color: rgb(255,255,255) !important;
 }
 
 .bg-custom-dark {
-    background-color: rgb(33,37,41) !important;
+background-color: rgb(33,37,41) !important;
 }
 
 .bg-custom-yellow {
-    background-color: rgb(253,245,220) !important;
+background-color: rgb(253,245,220) !important;
 }
+
+

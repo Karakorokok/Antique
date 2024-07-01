@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * This file is part of CodeIgniter 4 framework.
  *
@@ -17,13 +15,8 @@ use CodeIgniter\Exceptions\ConfigException;
 use Composer\Autoload\ClassLoader;
 use Composer\InstalledVersions;
 use Config\Autoload;
-use Config\Kint as KintConfig;
 use Config\Modules;
-use Config\Services;
 use InvalidArgumentException;
-use Kint;
-use Kint\Renderer\CliRenderer;
-use Kint\Renderer\RichRenderer;
 use RuntimeException;
 
 /**
@@ -60,29 +53,28 @@ use RuntimeException;
  *      // register the autoloader
  *      $loader->register();
  * ```
- *
- * @see \CodeIgniter\Autoloader\AutoloaderTest
  */
 class Autoloader
 {
     /**
      * Stores namespaces as key, and path as values.
      *
-     * @var array<string, list<string>>
+     * @var array<string, array<string>>
      */
     protected $prefixes = [];
 
     /**
      * Stores class name as key, and path as values.
      *
-     * @var array<class-string, string>
+     * @var array<string, string>
      */
     protected $classmap = [];
 
     /**
      * Stores files as a list.
      *
-     * @var list<string>
+     * @var string[]
+     * @phpstan-var list<string>
      */
     protected $files = [];
 
@@ -90,7 +82,8 @@ class Autoloader
      * Stores helper list.
      * Always load the URL helper, it should be used in most apps.
      *
-     * @var list<string>
+     * @var string[]
+     * @phpstan-var list<string>
      */
     protected $helpers = ['url'];
 
@@ -124,27 +117,25 @@ class Autoloader
             $this->files = $config->files;
         }
 
-        if (isset($config->helpers)) {
+        if (isset($config->helpers)) { // @phpstan-ignore-line
             $this->helpers = [...$this->helpers, ...$config->helpers];
         }
 
         if (is_file(COMPOSER_PATH)) {
-            $this->loadComposerAutoloader($modules);
+            $this->loadComposerInfo($modules);
         }
 
         return $this;
     }
 
-    private function loadComposerAutoloader(Modules $modules): void
+    private function loadComposerInfo(Modules $modules): void
     {
-        // The path to the vendor directory.
-        // We do not want to enforce this, so set the constant if Composer was used.
-        if (! defined('VENDORPATH')) {
-            define('VENDORPATH', dirname(COMPOSER_PATH) . DIRECTORY_SEPARATOR);
-        }
-
-        /** @var ClassLoader $composer */
+        /**
+         * @var ClassLoader $composer
+         */
         $composer = include COMPOSER_PATH;
+
+        $this->loadComposerClassmap($composer);
 
         // Should we load through Composer's namespaces, also?
         if ($modules->discoverInComposer) {
@@ -157,16 +148,14 @@ class Autoloader
 
     /**
      * Register the loader with the SPL autoloader stack.
-     *
-     * @return void
      */
     public function register()
     {
-        // Register classmap loader for the files in our class map.
-        spl_autoload_register($this->loadClassmap(...), true);
+        // Prepend the PSR4  autoloader for maximum performance.
+        spl_autoload_register([$this, 'loadClass'], true, true);
 
-        // Register the PSR-4 autoloader.
-        spl_autoload_register($this->loadClass(...), true);
+        // Now prepend another loader for the files in our class map.
+        spl_autoload_register([$this, 'loadClassmap'], true, true);
 
         // Load our non-class files
         foreach ($this->files as $file) {
@@ -181,14 +170,15 @@ class Autoloader
      */
     public function unregister(): void
     {
-        spl_autoload_unregister($this->loadClass(...));
-        spl_autoload_unregister($this->loadClassmap(...));
+        spl_autoload_unregister([$this, 'loadClass']);
+        spl_autoload_unregister([$this, 'loadClassmap']);
     }
 
     /**
      * Registers namespaces with the autoloader.
      *
-     * @param array<string, list<string>|string>|string $namespace
+     * @param array<string, array<int, string>|string>|string $namespace
+     * @phpstan-param array<string, list<string>|string>|string $namespace
      *
      * @return $this
      */
@@ -220,8 +210,7 @@ class Autoloader
      *
      * If a prefix param is set, returns only paths to the given prefix.
      *
-     * @return         array<string, list<string>>|list<string>
-     * @phpstan-return ($prefix is null ? array<string, list<string>> : list<string>)
+     * @return array
      */
     public function getNamespace(?string $prefix = null)
     {
@@ -249,27 +238,33 @@ class Autoloader
     /**
      * Load a class using available class mapping.
      *
-     * @internal For `spl_autoload_register` use.
+     * @return false|string
      */
-    public function loadClassmap(string $class): void
+    public function loadClassmap(string $class)
     {
         $file = $this->classmap[$class] ?? '';
 
         if (is_string($file) && $file !== '') {
-            $this->includeFile($file);
+            return $this->includeFile($file);
         }
+
+        return false;
     }
 
     /**
      * Loads the class file for a given class name.
      *
-     * @internal For `spl_autoload_register` use.
-     *
      * @param string $class The fully qualified class name.
+     *
+     * @return false|string The mapped file on success, or boolean false
+     *                      on failure.
      */
-    public function loadClass(string $class): void
+    public function loadClass(string $class)
     {
-        $this->loadInNamespace($class);
+        $class = trim($class, '\\');
+        $class = str_ireplace('.php', '', $class);
+
+        return $this->loadInNamespace($class);
     }
 
     /**
@@ -281,18 +276,16 @@ class Autoloader
      */
     protected function loadInNamespace(string $class)
     {
-        if (! str_contains($class, '\\')) {
+        if (strpos($class, '\\') === false) {
             return false;
         }
 
         foreach ($this->prefixes as $namespace => $directories) {
-            if (str_starts_with($class, $namespace)) {
-                $relativeClassPath = str_replace('\\', DIRECTORY_SEPARATOR, substr($class, strlen($namespace)));
+            foreach ($directories as $directory) {
+                $directory = rtrim($directory, '\\/');
 
-                foreach ($directories as $directory) {
-                    $directory = rtrim($directory, '\\/');
-
-                    $filePath = $directory . $relativeClassPath . '.php';
+                if (strpos($class, $namespace) === 0) {
+                    $filePath = $directory . str_replace('\\', DIRECTORY_SEPARATOR, substr($class, strlen($namespace))) . '.php';
                     $filename = $this->includeFile($filePath);
 
                     if ($filename) {
@@ -313,6 +306,8 @@ class Autoloader
      */
     protected function includeFile(string $file)
     {
+        $file = $this->sanitizeFilename($file);
+
         if (is_file($file)) {
             include_once $file;
 
@@ -332,8 +327,6 @@ class Autoloader
      * and end of filename.
      *
      * @return string The sanitized filename
-     *
-     * @deprecated No longer used. See https://github.com/codeigniter4/CodeIgniter4/issues/7055
      */
     public function sanitizeFilename(string $filename): string
     {
@@ -352,7 +345,11 @@ class Autoloader
             );
         }
         if ($result === false) {
-            $message = preg_last_error_msg();
+            if (version_compare(PHP_VERSION, '8.0.0', '>=')) {
+                $message = preg_last_error_msg();
+            } else {
+                $message = 'Regex error. error code: ' . preg_last_error();
+            }
 
             throw new RuntimeException($message . '. filename: "' . $filename . '"');
         }
@@ -371,13 +368,9 @@ class Autoloader
     {
         $namespacePaths = $composer->getPrefixesPsr4();
 
-        // Get rid of duplicated namespaces.
-        $duplicatedNamespaces = ['CodeIgniter', APP_NAMESPACE, 'Config'];
-
-        foreach ($duplicatedNamespaces as $ns) {
-            if (isset($namespacePaths[$ns . '\\'])) {
-                unset($namespacePaths[$ns . '\\']);
-            }
+        // Get rid of CodeIgniter so we don't have duplicates
+        if (isset($namespacePaths['CodeIgniter\\'])) {
+            unset($namespacePaths['CodeIgniter\\']);
         }
 
         if (! method_exists(InstalledVersions::class, 'getAllRawData')) {
@@ -425,7 +418,7 @@ class Autoloader
 
             foreach ($srcPaths as $path) {
                 foreach ($installPaths as $installPath) {
-                    if (str_starts_with($path, $installPath)) {
+                    if ($installPath === substr($path, 0, strlen($installPath))) {
                         $add = true;
                         break 2;
                     }
@@ -441,12 +434,17 @@ class Autoloader
         $this->addNamespace($newPaths);
     }
 
+    private function loadComposerClassmap(ClassLoader $composer): void
+    {
+        $classes = $composer->getClassMap();
+
+        $this->classmap = array_merge($this->classmap, $classes);
+    }
+
     /**
      * Locates autoload information from Composer, if available.
      *
      * @deprecated No longer used.
-     *
-     * @return void
      */
     protected function discoverComposerNamespaces()
     {
@@ -485,77 +483,5 @@ class Autoloader
     public function loadHelpers(): void
     {
         helper($this->helpers);
-    }
-
-    /**
-     * Initializes Kint
-     */
-    public function initializeKint(bool $debug = false): void
-    {
-        if ($debug) {
-            $this->autoloadKint();
-            $this->configureKint();
-        } elseif (class_exists(Kint::class)) {
-            // In case that Kint is already loaded via Composer.
-            Kint::$enabled_mode = false;
-        }
-
-        helper('kint');
-    }
-
-    private function autoloadKint(): void
-    {
-        // If we have KINT_DIR it means it's already loaded via composer
-        if (! defined('KINT_DIR')) {
-            spl_autoload_register(function ($class) {
-                $class = explode('\\', $class);
-
-                if (array_shift($class) !== 'Kint') {
-                    return;
-                }
-
-                $file = SYSTEMPATH . 'ThirdParty/Kint/' . implode('/', $class) . '.php';
-
-                if (is_file($file)) {
-                    require_once $file;
-                }
-            });
-
-            require_once SYSTEMPATH . 'ThirdParty/Kint/init.php';
-        }
-    }
-
-    private function configureKint(): void
-    {
-        $config = new KintConfig();
-
-        Kint::$depth_limit         = $config->maxDepth;
-        Kint::$display_called_from = $config->displayCalledFrom;
-        Kint::$expanded            = $config->expanded;
-
-        if (isset($config->plugins) && is_array($config->plugins)) {
-            Kint::$plugins = $config->plugins;
-        }
-
-        $csp = Services::csp();
-        if ($csp->enabled()) {
-            RichRenderer::$js_nonce  = $csp->getScriptNonce();
-            RichRenderer::$css_nonce = $csp->getStyleNonce();
-        }
-
-        RichRenderer::$theme  = $config->richTheme;
-        RichRenderer::$folder = $config->richFolder;
-        RichRenderer::$sort   = $config->richSort;
-        if (isset($config->richObjectPlugins) && is_array($config->richObjectPlugins)) {
-            RichRenderer::$value_plugins = $config->richObjectPlugins;
-        }
-        if (isset($config->richTabPlugins) && is_array($config->richTabPlugins)) {
-            RichRenderer::$tab_plugins = $config->richTabPlugins;
-        }
-
-        CliRenderer::$cli_colors         = $config->cliColors;
-        CliRenderer::$force_utf8         = $config->cliForceUTF8;
-        CliRenderer::$detect_width       = $config->cliDetectWidth;
-        CliRenderer::$min_terminal_width = $config->cliMinWidth;
     }
 }
